@@ -14,6 +14,11 @@ import {
   ReadResourceRequest,
   ReadResourceResult
 } from './mcp-types';
+import { 
+  ProtectedResourceMetadata, 
+  MCP_SERVER_URI,
+  OAUTH_CONSTANTS 
+} from './oauth-config';
 
 // Simple MCP Server implementation following the official specification
 class SimpleMCPServer {
@@ -192,18 +197,70 @@ Available resources: server-info, system-status`,
       version: this.version,
     };
   }
+
+  // Get protected resource metadata (RFC9728)
+  getProtectedResourceMetadata(): ProtectedResourceMetadata {
+    return {
+      resource: MCP_SERVER_URI,
+      authorization_servers: [
+        process.env.OAUTH_AUTHORIZATION_SERVER || 'https://oauth.example.com'
+      ],
+      scopes: ['mcp:read', 'mcp:write'],
+      token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
+    };
+  }
 }
 
-// HTTP Stream Transport Server with proper MCP protocol
+// Simple token validator (in production, use a proper JWT library)
+class TokenValidator {
+  private authorizationServer: string;
+
+  constructor(authorizationServer: string) {
+    this.authorizationServer = authorizationServer;
+  }
+
+  // Validate access token (simplified - in production, validate JWT properly)
+  async validateToken(token: string): Promise<{ valid: boolean; audience?: string; scope?: string }> {
+    try {
+      // In a real implementation, you would:
+      // 1. Decode and validate the JWT
+      // 2. Verify the signature using the authorization server's JWKS
+      // 3. Check the audience claim matches this server's URI
+      // 4. Check the token hasn't expired
+      // 5. Verify the scope includes required permissions
+
+      // For this demo, we'll do a simple check
+      if (!token || token.length < 10) {
+        return { valid: false };
+      }
+
+      // Simulate token validation
+      // In production, decode JWT and validate properly
+      return {
+        valid: true,
+        audience: MCP_SERVER_URI,
+        scope: 'mcp:read mcp:write',
+      };
+    } catch (error) {
+      return { valid: false };
+    }
+  }
+}
+
+// HTTP Stream Transport Server with OAuth 2.1 resource server functionality
 class HTTPStreamTransport {
   private app: express.Application;
   private wss!: WebSocketServer;
   private server: any;
   private mcpServer: SimpleMCPServer;
+  private tokenValidator: TokenValidator;
 
   constructor(port: number = 3000) {
     this.app = express();
     this.mcpServer = new SimpleMCPServer();
+    this.tokenValidator = new TokenValidator(
+      process.env.OAUTH_AUTHORIZATION_SERVER || 'https://oauth.example.com'
+    );
     this.setupExpress();
     this.setupWebSocket(port);
   }
@@ -217,9 +274,45 @@ class HTTPStreamTransport {
       res.json({ status: 'ok', server: 'Simple MCP Server' });
     });
 
-    // MCP endpoint for HTTP stream transport
+    // Protected Resource Metadata endpoint (RFC9728)
+    this.app.get('/.well-known/oauth-resource-metadata', (req: express.Request, res: express.Response) => {
+      res.json(this.mcpServer.getProtectedResourceMetadata());
+    });
+
+    // MCP endpoint for HTTP stream transport with OAuth protection
     this.app.post('/mcp', async (req: express.Request, res: express.Response) => {
       try {
+        // Extract and validate authorization header
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+          // Return 401 with WWW-Authenticate header as per RFC9728
+          res.setHeader('WWW-Authenticate', `Bearer realm="${MCP_SERVER_URI}", resource="${MCP_SERVER_URI}"`);
+          return res.status(401).json({
+            error: 'unauthorized',
+            error_description: 'Bearer token required',
+          });
+        }
+
+        const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+        // Validate the access token
+        const tokenValidation = await this.tokenValidator.validateToken(token);
+        if (!tokenValidation.valid) {
+          res.setHeader('WWW-Authenticate', `Bearer realm="${MCP_SERVER_URI}", resource="${MCP_SERVER_URI}"`);
+          return res.status(401).json({
+            error: 'invalid_token',
+            error_description: 'Invalid or expired access token',
+          });
+        }
+
+        // Check if token audience matches this server
+        if (tokenValidation.audience !== MCP_SERVER_URI) {
+          return res.status(403).json({
+            error: 'insufficient_scope',
+            error_description: 'Token not intended for this resource',
+          });
+        }
+
         const mcpRequest: MCPRequest = req.body;
         
         // Validate JSON-RPC 2.0 request
@@ -300,6 +393,7 @@ class HTTPStreamTransport {
     this.server = this.app.listen(port, () => {
       console.log(`MCP Server running on http://localhost:${port}`);
       console.log(`WebSocket server available on ws://localhost:${port}`);
+      console.log(`Protected Resource Metadata: http://localhost:${port}/.well-known/oauth-resource-metadata`);
     });
 
     this.wss = new WebSocketServer({ server: this.server });

@@ -5,14 +5,57 @@ import {
   MCPResponse, 
   MCP_METHODS 
 } from './mcp-types';
+import { OAuthClient } from './oauth-client';
+import { DEFAULT_OAUTH_CONFIG, MCP_SERVER_URI } from './oauth-config';
 
 class SimpleMCPClient {
   private ws: WebSocket | null = null;
   private serverUrl: string;
   private requestId = 0;
+  private oauthClient: OAuthClient;
 
-  constructor(serverUrl: string = 'http://localhost:3000') {
+  constructor(serverUrl: string = 'http://localhost:3000', oauthConfig = DEFAULT_OAUTH_CONFIG) {
     this.serverUrl = serverUrl;
+    this.oauthClient = new OAuthClient(oauthConfig);
+  }
+
+  // Initialize OAuth authentication
+  async initializeAuth(): Promise<void> {
+    try {
+      // Try to register client dynamically
+      console.log('Attempting dynamic client registration...');
+      const clientInfo = await this.oauthClient.registerClient();
+      console.log('Client registered successfully:', clientInfo.clientId);
+    } catch (error) {
+      console.log('Dynamic client registration failed, using configured client ID');
+    }
+
+    // Start authorization flow
+    console.log('Starting OAuth authorization flow...');
+    const { authUrl, state, codeVerifier } = await this.oauthClient.startAuthorization();
+    
+    console.log('\n=== OAuth Authorization Required ===');
+    console.log('Please visit the following URL to authorize this application:');
+    console.log(authUrl);
+    console.log('\nAfter authorization, you will be redirected to a callback URL.');
+    console.log('Please provide the authorization code from the callback URL.');
+    
+    // In a real application, you would:
+    // 1. Open the auth URL in a browser
+    // 2. Handle the callback automatically
+    // 3. Extract the authorization code from the callback
+    
+    // For this demo, we'll simulate the authorization flow
+    console.log('\n=== Demo Mode: Simulating Authorization ===');
+    console.log('In a real application, the user would complete the OAuth flow.');
+    console.log('For this demo, we\'ll assume authorization was successful.');
+    
+    // Simulate getting an authorization code (in real app, this comes from callback)
+    const simulatedCode = 'demo_authorization_code_' + Date.now();
+    
+    // Exchange code for tokens
+    await this.oauthClient.exchangeCodeForTokens(simulatedCode, codeVerifier, state, state);
+    console.log('OAuth authorization completed successfully!');
   }
 
   // Connect via WebSocket
@@ -79,7 +122,7 @@ class SimpleMCPClient {
     });
   }
 
-  // Send request via HTTP
+  // Send request via HTTP with OAuth token
   async sendHTTPRequest(method: string, params?: any): Promise<any> {
     const request: MCPRequest = {
       jsonrpc: '2.0',
@@ -88,13 +131,47 @@ class SimpleMCPClient {
       params,
     };
 
+    // Get valid access token
+    const accessToken = await this.oauthClient.getValidAccessToken();
+
     const response = await fetch(`${this.serverUrl}/mcp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
       },
       body: JSON.stringify(request),
     });
+
+    if (response.status === 401) {
+      // Token might be invalid, try to refresh
+      console.log('Token expired, attempting refresh...');
+      await this.oauthClient.refreshAccessToken();
+      const newToken = await this.oauthClient.getValidAccessToken();
+      
+      // Retry with new token
+      const retryResponse = await fetch(`${this.serverUrl}/mcp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${newToken}`,
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!retryResponse.ok) {
+        throw new Error(`HTTP error: ${retryResponse.status}`);
+      }
+
+      const text = await retryResponse.text();
+      const mcpResponse: MCPResponse = JSON.parse(text);
+      
+      if (mcpResponse.error) {
+        throw new Error(mcpResponse.error.message);
+      }
+      
+      return mcpResponse.result;
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP error: ${response.status}`);
@@ -164,9 +241,14 @@ class SimpleMCPClient {
       this.ws = null;
     }
   }
+
+  // Check if OAuth is authenticated
+  isAuthenticated(): boolean {
+    return this.oauthClient.hasValidToken();
+  }
 }
 
-// Simple Agent that uses the MCP client
+// Simple Agent that uses the MCP client with OAuth
 class SimpleAgent {
   private client: SimpleMCPClient;
 
@@ -176,8 +258,16 @@ class SimpleAgent {
 
   async initialize(): Promise<void> {
     try {
-      await this.client.connectWebSocket();
-      console.log('Agent initialized and connected to MCP server');
+      // Initialize OAuth authentication
+      await this.client.initializeAuth();
+      
+      // Connect to WebSocket if authentication successful
+      if (this.client.isAuthenticated()) {
+        await this.client.connectWebSocket();
+        console.log('Agent initialized and connected to MCP server with OAuth');
+      } else {
+        console.log('OAuth authentication required before connecting');
+      }
     } catch (error) {
       console.log('WebSocket connection failed, will use HTTP transport');
     }
