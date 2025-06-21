@@ -55,8 +55,8 @@ export const OAUTH_CONSTANTS = {
 
 // Default OAuth configuration (should be overridden in production)
 export const DEFAULT_OAUTH_CONFIG: OAuthConfig = {
-  authorizationServer: 'https://oauth.example.com',
-  clientId: 'mcp-client',
+  authorizationServer: 'https://maverics7.stratademo.io',
+  clientId: 'agentic_ai',
   redirectUri: 'http://localhost:3001/callback',
   scope: 'mcp:read mcp:write',
 };

@@ -1,10 +1,10 @@
 # Simple MCP Agent and Server with OAuth 2.1 Authorization
 
-This project implements a simple Model Context Protocol (MCP) server and client using HTTP stream transport with **OAuth 2.1 authorization**, fully compliant with the [MCP authorization specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization).
+This project implements an example and simple Model Context Protocol (MCP) server and client (for the purpose of showcasing agent and MCP server authorization support) using HTTP stream transport with **OAuth 2.1 authorization**, fully compliant with the [MCP authorization specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization). This project uses Strata Maverics for the OAuth/OIDC authentication and authorization platform. See more information at [Maverics Identity for agentic AI](https://www.strata.io/agentic/).
 
 ## Overview
 
-The Model Context Protocol (MCP) is an open protocol that standardizes how applications provide context to LLMs. This implementation demonstrates:
+The Model Context Protocol (MCP) is an open protocol that standardizes how applications provide context to LLMs. This example implementation demonstrates:
 
 - A fully MCP-compliant server with proper JSON-RPC 2.0 protocol
 - **OAuth 2.1 authorization** with PKCE, dynamic client registration, and resource indicators
@@ -112,30 +112,30 @@ Tests the HTTP transport with various MCP methods and error conditions.
 
 ## OAuth Configuration
 
+### Current Configuration
+
+The implementation is configured to use:
+- **Authorization Server**: `https://maverics7.stratademo.io`
+- **Client ID**: `agentic_ai`
+- **Redirect URI**: `http://localhost:3001/callback`
+- **Scope**: `mcp:read mcp:write`
+- **Resource**: `http://localhost:3000`
+
 ### Environment Variables
 
 Set these environment variables to configure OAuth:
 
 ```bash
 # OAuth Authorization Server URL
-export OAUTH_AUTHORIZATION_SERVER="https://your-oauth-server.com"
+export OAUTH_AUTHORIZATION_SERVER="https://maverics7.stratademo.io"
 
 # MCP Server URL
 export MCP_SERVER_URL="http://localhost:3000"
 
 # OAuth Client Configuration (optional - will use dynamic registration)
-export OAUTH_CLIENT_ID="your-client-id"
+export OAUTH_CLIENT_ID="agentic_ai"
 export OAUTH_CLIENT_SECRET="your-client-secret"
 ```
-
-### Default Configuration
-
-The default OAuth configuration uses:
-- Authorization Server: `https://oauth.example.com`
-- Client ID: `mcp-client`
-- Redirect URI: `http://localhost:3001/callback`
-- Scope: `mcp:read mcp:write`
-- Resource: `http://localhost:3000`
 
 ## OAuth Authorization Flow
 
