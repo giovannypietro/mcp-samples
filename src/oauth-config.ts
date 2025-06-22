@@ -57,6 +57,7 @@ export const OAUTH_CONSTANTS = {
 export const DEFAULT_OAUTH_CONFIG: OAuthConfig = {
   authorizationServer: 'https://maverics7.stratademo.io',
   clientId: 'agentic_ai',
+  clientSecret: 'secret',
   redirectUri: 'http://localhost:3001/callback',
   scope: 'mcp:read mcp:write',
 };

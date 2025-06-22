@@ -110,6 +110,120 @@ npm run test
 
 Tests the HTTP transport with various MCP methods and error conditions.
 
+## Debug Output
+
+The OAuth client flow includes comprehensive debug output to help track the authorization process. This is useful for development, troubleshooting, and understanding the OAuth flow.
+
+### Enable Debug Mode
+
+#### Run Client with Debug Output
+```bash
+npm run client:debug
+```
+
+#### Run OAuth Debug Test
+```bash
+npm run test:oauth-debug
+```
+
+This test demonstrates all OAuth client functionality with detailed debug output.
+
+### Debug Output Features
+
+The debug output provides detailed information about:
+
+#### OAuth Client Debug Information
+- **Initialization**: Configuration details and OAuth client setup
+- **PKCE Generation**: Code verifier and challenge generation
+- **State Generation**: CSRF protection state parameter
+- **Metadata Discovery**: Authorization server metadata retrieval
+- **Client Registration**: Dynamic client registration process
+- **Authorization Flow**: Authorization URL generation and parameters
+- **Token Exchange**: Authorization code exchange for tokens
+- **Token Refresh**: Access token refresh operations
+- **Token Validation**: Token expiry and validity checks
+- **Error Handling**: Detailed error information and context
+
+#### OAuth Callback Server Debug Information
+- **Callback Requests**: Incoming authorization callbacks
+- **Session Management**: Authorization session storage and retrieval
+- **Token Exchange**: Token exchange process within callback
+- **Error Handling**: Callback error processing
+
+#### MCP Client Debug Information
+- **OAuth Initialization**: OAuth flow initialization process
+- **WebSocket Connections**: WebSocket connection status
+- **HTTP Requests**: HTTP request details with OAuth tokens
+- **Token Management**: Token usage and refresh operations
+- **Error Handling**: Request failures and retry logic
+
+### Debug Output Example
+
+When running with debug mode enabled, you'll see output like:
+
+```
+[OAuthClient] Initialized with config: {
+  authorizationServer: 'https://maverics7.stratademo.io',
+  clientId: 'agentic_ai',
+  redirectUri: 'http://localhost:3001/callback',
+  scope: 'mcp:read mcp:write',
+  hasClientSecret: false
+}
+
+[OAuthClient] Fetching authorization server metadata from: https://maverics7.stratademo.io/.well-known/oauth-authorization-server
+
+[OAuthClient] Authorization server metadata:
+  Authorization Endpoint: https://maverics7.stratademo.io/oauth/authorize
+  Token Endpoint: https://maverics7.stratademo.io/oauth/token
+  Registration Endpoint: https://maverics7.stratademo.io/oauth/register
+
+[OAuthClient] Starting dynamic client registration...
+
+[OAuthClient] Client registration request: {
+  client_name: 'Sample MCP Client',
+  client_uri: 'http://localhost:3001',
+  redirect_uris: ['http://localhost:3001/callback'],
+  grant_types: ['authorization_code'],
+  response_types: ['code'],
+  token_endpoint_auth_method: 'client_secret_basic',
+  scope: 'mcp:read mcp:write'
+}
+
+[OAuthClient] Generated PKCE:
+  Code Verifier: abc123...
+  Code Challenge: xyz789...
+
+[OAuthClient] Generated state parameter: def456...
+
+[OAuthClient] Authorization URL generated:
+  Base URL: https://maverics7.stratademo.io/oauth/authorize
+  Parameters:
+    response_type: code
+    client_id: agentic_ai
+    redirect_uri: http://localhost:3001/callback
+    scope: mcp:read mcp:write
+    state: def456...
+    code_challenge: xyz789...
+    code_challenge_method: S256
+    resource: http://localhost:3000
+```
+
+### Debug Output Benefits
+
+1. **Development**: Understand the OAuth flow step-by-step
+2. **Troubleshooting**: Identify issues in the authorization process
+3. **Security**: Verify PKCE, state parameters, and token handling
+4. **Compliance**: Ensure proper OAuth 2.1 implementation
+5. **Integration**: Debug OAuth server integration issues
+
+### Disabling Debug Output
+
+Debug output is disabled by default. To disable it when enabled:
+
+- Remove the `--debug` flag from command line arguments
+- Set `debug: false` in constructor parameters
+- Debug output can be controlled per component (OAuth client, callback server, MCP client)
+
 ## OAuth Configuration
 
 ### Current Configuration

@@ -9,7 +9,9 @@
     "dev": "ts-node src/index.ts",
     "server": "ts-node src/server.ts",
     "client": "ts-node src/client.ts",
+    "client:debug": "ts-node src/client.ts --debug",
     "test": "ts-node src/test-http.ts",
+    "test:oauth-debug": "ts-node src/test-oauth-debug.ts",
     "oauth-callback": "ts-node src/oauth-callback-server.ts"
   },
   "dependencies": {

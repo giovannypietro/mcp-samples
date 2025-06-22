@@ -13,26 +13,61 @@ class SimpleMCPClient {
   private serverUrl: string;
   private requestId = 0;
   private oauthClient: OAuthClient;
+  private debug: boolean;
 
-  constructor(serverUrl: string = 'http://localhost:3000', oauthConfig = DEFAULT_OAUTH_CONFIG) {
+  constructor(serverUrl: string = 'http://localhost:3000', oauthConfig = DEFAULT_OAUTH_CONFIG, debug: boolean = false) {
     this.serverUrl = serverUrl;
-    this.oauthClient = new OAuthClient(oauthConfig);
+    this.debug = debug;
+    this.oauthClient = new OAuthClient(oauthConfig, debug);
+    
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Initialized with debug mode enabled');
+      console.log('[SimpleMCPClient] Server URL:', serverUrl);
+    }
   }
 
   // Initialize OAuth authentication
   async initializeAuth(): Promise<void> {
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Starting OAuth initialization...');
+    }
+    
     try {
       // Try to register client dynamically
       console.log('Attempting dynamic client registration...');
+      if (this.debug) {
+        console.log('[SimpleMCPClient] Attempting dynamic client registration...');
+      }
+      
       const clientInfo = await this.oauthClient.registerClient();
       console.log('Client registered successfully:', clientInfo.clientId);
+      
+      if (this.debug) {
+        console.log('[SimpleMCPClient] Dynamic client registration successful');
+        console.log('[SimpleMCPClient] Client ID:', clientInfo.clientId);
+        console.log('[SimpleMCPClient] Has Client Secret:', !!clientInfo.clientSecret);
+      }
     } catch (error) {
       console.log('Dynamic client registration failed, using configured client ID');
+      if (this.debug) {
+        console.log('[SimpleMCPClient] Dynamic client registration failed:', error);
+        console.log('[SimpleMCPClient] Falling back to configured client ID');
+      }
     }
 
     // Start authorization flow
     console.log('Starting OAuth authorization flow...');
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Starting OAuth authorization flow...');
+    }
+    
     const { authUrl, state, codeVerifier } = await this.oauthClient.startAuthorization();
+    
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Authorization flow started:');
+      console.log('[SimpleMCPClient] State:', state);
+      console.log('[SimpleMCPClient] Code verifier present:', !!codeVerifier);
+    }
     
     console.log('\n=== OAuth Authorization Required ===');
     console.log('Please visit the following URL to authorize this application:');
@@ -50,32 +85,62 @@ class SimpleMCPClient {
     console.log('In a real application, the user would complete the OAuth flow.');
     console.log('For this demo, we\'ll assume authorization was successful.');
     
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Demo mode: simulating authorization code');
+    }
+    
     // Simulate getting an authorization code (in real app, this comes from callback)
     const simulatedCode = 'demo_authorization_code_' + Date.now();
+    
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Simulated authorization code:', simulatedCode);
+      console.log('[SimpleMCPClient] Exchanging code for tokens...');
+    }
     
     // Exchange code for tokens
     await this.oauthClient.exchangeCodeForTokens(simulatedCode, codeVerifier, state, state);
     console.log('OAuth authorization completed successfully!');
+    
+    if (this.debug) {
+      console.log('[SimpleMCPClient] OAuth authorization completed successfully');
+      console.log('[SimpleMCPClient] Token status:', {
+        hasAccessToken: this.oauthClient.hasValidToken(),
+        isAuthenticated: this.isAuthenticated()
+      });
+    }
   }
 
   // Connect via WebSocket
   async connectWebSocket(): Promise<void> {
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Connecting to WebSocket...');
+    }
+    
     return new Promise((resolve, reject) => {
       const wsUrl = this.serverUrl.replace('http', 'ws');
       this.ws = new WebSocket(wsUrl);
 
       this.ws.on('open', () => {
         console.log('Connected to MCP server via WebSocket');
+        if (this.debug) {
+          console.log('[SimpleMCPClient] WebSocket connection established');
+        }
         resolve();
       });
 
       this.ws.on('error', (error: any) => {
         console.error('WebSocket connection error:', error);
+        if (this.debug) {
+          console.error('[SimpleMCPClient] WebSocket connection error:', error);
+        }
         reject(error);
       });
 
       this.ws.on('close', () => {
         console.log('Disconnected from MCP server');
+        if (this.debug) {
+          console.log('[SimpleMCPClient] WebSocket connection closed');
+        }
       });
     });
   }
@@ -84,6 +149,10 @@ class SimpleMCPClient {
   async sendWebSocketRequest(method: string, params?: any): Promise<any> {
     if (!this.ws) {
       throw new Error('WebSocket not connected');
+    }
+
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Sending WebSocket request:', { method, params });
     }
 
     return new Promise((resolve, reject) => {
@@ -103,13 +172,22 @@ class SimpleMCPClient {
               this.ws.off('message', messageHandler);
             }
             if (response.error) {
+              if (this.debug) {
+                console.error('[SimpleMCPClient] WebSocket request failed:', response.error);
+              }
               reject(new Error(response.error.message));
             } else {
+              if (this.debug) {
+                console.log('[SimpleMCPClient] WebSocket request successful');
+              }
               resolve(response.result);
             }
           }
         } catch (error) {
           console.error('Error parsing WebSocket response:', error);
+          if (this.debug) {
+            console.error('[SimpleMCPClient] WebSocket response parsing error:', error);
+          }
         }
       };
 
@@ -124,6 +202,10 @@ class SimpleMCPClient {
 
   // Send request via HTTP with OAuth token
   async sendHTTPRequest(method: string, params?: any): Promise<any> {
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Sending HTTP request:', { method, params });
+    }
+    
     const request: MCPRequest = {
       jsonrpc: '2.0',
       id: (++this.requestId).toString(),
@@ -133,6 +215,10 @@ class SimpleMCPClient {
 
     // Get valid access token
     const accessToken = await this.oauthClient.getValidAccessToken();
+    
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Using access token (first 20 chars):', accessToken.substring(0, 20) + '...');
+    }
 
     const response = await fetch(`${this.serverUrl}/mcp`, {
       method: 'POST',
@@ -146,8 +232,16 @@ class SimpleMCPClient {
     if (response.status === 401) {
       // Token might be invalid, try to refresh
       console.log('Token expired, attempting refresh...');
+      if (this.debug) {
+        console.log('[SimpleMCPClient] Token expired (401), attempting refresh...');
+      }
+      
       await this.oauthClient.refreshAccessToken();
       const newToken = await this.oauthClient.getValidAccessToken();
+      
+      if (this.debug) {
+        console.log('[SimpleMCPClient] Token refreshed, retrying request with new token');
+      }
       
       // Retry with new token
       const retryResponse = await fetch(`${this.serverUrl}/mcp`, {
@@ -160,28 +254,50 @@ class SimpleMCPClient {
       });
 
       if (!retryResponse.ok) {
-        throw new Error(`HTTP error: ${retryResponse.status}`);
+        const error = `HTTP error: ${retryResponse.status}`;
+        if (this.debug) {
+          console.error('[SimpleMCPClient] Retry request failed:', error);
+        }
+        throw new Error(error);
       }
 
       const text = await retryResponse.text();
       const mcpResponse: MCPResponse = JSON.parse(text);
       
       if (mcpResponse.error) {
+        if (this.debug) {
+          console.error('[SimpleMCPClient] MCP response error:', mcpResponse.error);
+        }
         throw new Error(mcpResponse.error.message);
+      }
+      
+      if (this.debug) {
+        console.log('[SimpleMCPClient] HTTP request successful after token refresh');
       }
       
       return mcpResponse.result;
     }
 
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
+      const error = `HTTP error: ${response.status}`;
+      if (this.debug) {
+        console.error('[SimpleMCPClient] HTTP request failed:', error);
+      }
+      throw new Error(error);
     }
 
     const text = await response.text();
     const mcpResponse: MCPResponse = JSON.parse(text);
     
     if (mcpResponse.error) {
+      if (this.debug) {
+        console.error('[SimpleMCPClient] MCP response error:', mcpResponse.error);
+      }
       throw new Error(mcpResponse.error.message);
+    }
+    
+    if (this.debug) {
+      console.log('[SimpleMCPClient] HTTP request successful');
     }
     
     return mcpResponse.result;
@@ -251,39 +367,74 @@ class SimpleMCPClient {
 // Simple Agent that uses the MCP client with OAuth
 class SimpleAgent {
   private client: SimpleMCPClient;
+  private debug: boolean;
 
-  constructor(serverUrl: string = 'http://localhost:3000') {
-    this.client = new SimpleMCPClient(serverUrl);
+  constructor(serverUrl: string = 'http://localhost:3000', debug: boolean = false) {
+    this.debug = debug;
+    this.client = new SimpleMCPClient(serverUrl, DEFAULT_OAUTH_CONFIG, debug);
+    
+    if (this.debug) {
+      console.log('[SimpleAgent] Initialized with debug mode enabled');
+      console.log('[SimpleAgent] Server URL:', serverUrl);
+    }
   }
 
   async initialize(): Promise<void> {
+    if (this.debug) {
+      console.log('[SimpleAgent] Starting initialization...');
+    }
+    
     try {
       // Initialize OAuth authentication
+      if (this.debug) {
+        console.log('[SimpleAgent] Initializing OAuth authentication...');
+      }
       await this.client.initializeAuth();
       
       // Connect to WebSocket if authentication successful
       if (this.client.isAuthenticated()) {
+        if (this.debug) {
+          console.log('[SimpleAgent] OAuth authenticated, connecting to WebSocket...');
+        }
         await this.client.connectWebSocket();
         console.log('Agent initialized and connected to MCP server with OAuth');
       } else {
         console.log('OAuth authentication required before connecting');
+        if (this.debug) {
+          console.log('[SimpleAgent] OAuth authentication failed or incomplete');
+        }
       }
     } catch (error) {
       console.log('WebSocket connection failed, will use HTTP transport');
+      if (this.debug) {
+        console.log('[SimpleAgent] WebSocket connection failed:', error);
+        console.log('[SimpleAgent] Will fall back to HTTP transport');
+      }
     }
   }
 
   async demonstrateServerInfo(): Promise<void> {
+    if (this.debug) {
+      console.log('[SimpleAgent] Demonstrating server info...');
+    }
+    
     console.log('\n=== Server Information ===');
     try {
       const serverInfo = await this.client.getServerInfo();
       console.log('Server info:', serverInfo);
     } catch (error) {
       console.error('Error getting server info:', error);
+      if (this.debug) {
+        console.error('[SimpleAgent] Server info demonstration failed:', error);
+      }
     }
   }
 
   async demonstrateTools(): Promise<void> {
+    if (this.debug) {
+      console.log('[SimpleAgent] Demonstrating MCP tools...');
+    }
+    
     console.log('\n=== Demonstrating MCP Tools ===');
 
     try {
@@ -309,10 +460,17 @@ class SimpleAgent {
 
     } catch (error) {
       console.error('Error demonstrating tools:', error);
+      if (this.debug) {
+        console.error('[SimpleAgent] Tools demonstration failed:', error);
+      }
     }
   }
 
   async demonstrateResources(): Promise<void> {
+    if (this.debug) {
+      console.log('[SimpleAgent] Demonstrating MCP resources...');
+    }
+    
     console.log('\n=== Demonstrating MCP Resources ===');
 
     try {
@@ -333,25 +491,50 @@ class SimpleAgent {
 
     } catch (error) {
       console.error('Error demonstrating resources:', error);
+      if (this.debug) {
+        console.error('[SimpleAgent] Resources demonstration failed:', error);
+      }
     }
   }
 
   async run(): Promise<void> {
-    await this.initialize();
-    await this.demonstrateServerInfo();
-    await this.demonstrateTools();
-    await this.demonstrateResources();
-    this.client.close();
+    if (this.debug) {
+      console.log('[SimpleAgent] Starting agent run...');
+    }
+    
+    try {
+      await this.initialize();
+      await this.demonstrateServerInfo();
+      await this.demonstrateTools();
+      await this.demonstrateResources();
+      
+      if (this.debug) {
+        console.log('[SimpleAgent] Agent run completed successfully');
+      }
+    } catch (error) {
+      console.error('Agent run failed:', error);
+      if (this.debug) {
+        console.error('[SimpleAgent] Agent run failed:', error);
+      }
+    } finally {
+      this.client.close();
+    }
   }
 }
 
-// Start the client/agent
-if (require.main === module) {
-  const serverUrl = process.env.MCP_SERVER_URL || 'http://localhost:3000';
-  const agent = new SimpleAgent(serverUrl);
+// Main execution
+async function main() {
+  const debug = process.argv.includes('--debug');
+  
+  if (debug) {
+    console.log('[Main] Starting with debug mode enabled');
+  }
+  
+  const agent = new SimpleAgent('http://localhost:3000', debug);
+  await agent.run();
+}
 
-  agent.run().catch((error) => {
-    console.error('Agent error:', error);
-    process.exit(1);
-  });
+// Run if this file is executed directly
+if (require.main === module) {
+  main().catch(console.error);
 } 

@@ -12,10 +12,15 @@ class OAuthCallbackServer {
   private app: express.Application;
   private server: any;
   private authSessions: Map<string, AuthSession> = new Map();
+  private debug: boolean;
 
-  constructor(port: number = 3001) {
+  constructor(port: number = 3001, debug: boolean = false) {
     this.app = express();
+    this.debug = debug;
     this.setupRoutes();
+    if (this.debug) {
+      console.log('[OAuthCallbackServer] Initialized with debug mode enabled');
+    }
   }
 
   private setupRoutes() {
@@ -23,8 +28,20 @@ class OAuthCallbackServer {
     this.app.get('/callback', async (req: express.Request, res: express.Response) => {
       const { code, state, error, error_description } = req.query;
 
+      if (this.debug) {
+        console.log('[OAuthCallbackServer] Received callback request:');
+        console.log('  Code:', code ? 'present' : 'missing');
+        console.log('  State:', state);
+        console.log('  Error:', error);
+        console.log('  Error Description:', error_description);
+        console.log('  Query Parameters:', req.query);
+      }
+
       if (error) {
         console.error('OAuth error:', error, error_description);
+        if (this.debug) {
+          console.error('[OAuthCallbackServer] OAuth error in callback:', { error, error_description });
+        }
         res.status(400).send(`
           <html>
             <body>
@@ -38,6 +55,9 @@ class OAuthCallbackServer {
       }
 
       if (!code || !state) {
+        if (this.debug) {
+          console.error('[OAuthCallbackServer] Missing required parameters:', { code: !!code, state: !!state });
+        }
         res.status(400).send(`
           <html>
             <body>
@@ -50,7 +70,17 @@ class OAuthCallbackServer {
       }
 
       const session = this.authSessions.get(state as string);
+      if (this.debug) {
+        console.log('[OAuthCallbackServer] Looking up session for state:', state);
+        console.log('  Session found:', !!session);
+        console.log('  Active sessions count:', this.authSessions.size);
+      }
+      
       if (!session) {
+        if (this.debug) {
+          console.error('[OAuthCallbackServer] No session found for state:', state);
+          console.error('[OAuthCallbackServer] Available session states:', Array.from(this.authSessions.keys()));
+        }
         res.status(400).send(`
           <html>
             <body>
@@ -63,6 +93,13 @@ class OAuthCallbackServer {
       }
 
       try {
+        if (this.debug) {
+          console.log('[OAuthCallbackServer] Starting token exchange...');
+          console.log('  Session state:', session.state);
+          console.log('  Code verifier present:', !!session.codeVerifier);
+          console.log('  OAuth client configured:', !!session.oauthClient);
+        }
+
         // Exchange authorization code for tokens
         await session.oauthClient.exchangeCodeForTokens(
           code as string,
@@ -73,6 +110,10 @@ class OAuthCallbackServer {
 
         // Clean up session
         this.authSessions.delete(state as string);
+        if (this.debug) {
+          console.log('[OAuthCallbackServer] Session cleaned up for state:', state);
+          console.log('  Remaining sessions:', this.authSessions.size);
+        }
 
         res.send(`
           <html>
@@ -89,8 +130,14 @@ class OAuthCallbackServer {
         `);
 
         console.log('OAuth authorization completed successfully');
+        if (this.debug) {
+          console.log('[OAuthCallbackServer] Authorization flow completed successfully');
+        }
       } catch (error) {
         console.error('Token exchange failed:', error);
+        if (this.debug) {
+          console.error('[OAuthCallbackServer] Token exchange failed with error:', error);
+        }
         res.status(500).send(`
           <html>
             <body>
@@ -105,7 +152,15 @@ class OAuthCallbackServer {
 
     // Health check
     this.app.get('/health', (req: express.Request, res: express.Response) => {
-      res.json({ status: 'ok', server: 'OAuth Callback Server' });
+      if (this.debug) {
+        console.log('[OAuthCallbackServer] Health check requested');
+      }
+      res.json({ 
+        status: 'ok', 
+        server: 'OAuth Callback Server',
+        debug: this.debug,
+        activeSessions: this.authSessions.size
+      });
     });
   }
 
@@ -114,6 +169,9 @@ class OAuthCallbackServer {
     return new Promise((resolve) => {
       this.server = this.app.listen(3001, () => {
         console.log('OAuth callback server running on http://localhost:3001');
+        if (this.debug) {
+          console.log('[OAuthCallbackServer] Server started with debug mode');
+        }
         resolve();
       });
     });
@@ -121,19 +179,43 @@ class OAuthCallbackServer {
 
   // Stop the callback server
   stop(): void {
+    if (this.debug) {
+      console.log('[OAuthCallbackServer] Stopping server...');
+    }
     if (this.server) {
       this.server.close();
+      if (this.debug) {
+        console.log('[OAuthCallbackServer] Server stopped');
+      }
     }
   }
 
   // Store authorization session
   storeSession(state: string, codeVerifier: string, oauthClient: OAuthClient): void {
+    if (this.debug) {
+      console.log('[OAuthCallbackServer] Storing session:');
+      console.log('  State:', state);
+      console.log('  Code verifier present:', !!codeVerifier);
+      console.log('  OAuth client present:', !!oauthClient);
+      console.log('  Sessions before:', this.authSessions.size);
+    }
+    
     this.authSessions.set(state, { state, codeVerifier, oauthClient });
+    
+    if (this.debug) {
+      console.log('[OAuthCallbackServer] Session stored successfully');
+      console.log('  Sessions after:', this.authSessions.size);
+    }
   }
 
   // Get authorization session
   getSession(state: string): AuthSession | undefined {
-    return this.authSessions.get(state);
+    const session = this.authSessions.get(state);
+    if (this.debug) {
+      console.log('[OAuthCallbackServer] Getting session for state:', state);
+      console.log('  Session found:', !!session);
+    }
+    return session;
   }
 }
 
