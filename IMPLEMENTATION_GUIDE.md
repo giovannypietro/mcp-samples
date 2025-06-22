@@ -372,8 +372,9 @@ npm run client
 ```
 
 ## Production Deployment
+> [!IMPORTANT] >This is a sample implementation and it is NOT meant for production use. Please contact @giovannypietro or @apietro777 for production usage.
 
-### 1. Configuration
+### 1. Example Configuration
 
 ```bash
 # Production OAuth Configuration
@@ -395,11 +396,7 @@ export MCP_SERVER_URL="https://your-mcp-server.com"
 ### 3. OAuth Server Integration
 
 **Supported OAuth Servers**:
-- Auth0
-- Okta
-- Keycloak
-- Azure AD
-- Google Identity Platform
+- Strata Maverics (Identity Orchestrator)
 - Any OAuth 2.1 compliant server
 
 **Configuration Steps**:

@@ -241,18 +241,21 @@ private generatePKCE(): { codeVerifier: string; codeChallenge: string } {
 
 ## Production Readiness
 
-### Current Status: ✅ **PRODUCTION READY**
+### Current Status: ✅ **NOT PRODUCTION READY**
 
-The implementation is ready for production deployment with the following considerations:
+> [!IMPORTANT] >This is a sample implementation and it is NOT meant for production use. Please contact @giovannypietro or @apietro777 for production usage.
 
-1. **OAuth Authorization Server**: Configure with a production OAuth server (Auth0, Okta, Keycloak, etc.)
+The implementation is not ready for production deployment. You need to think about the following considerations:
+
+1. **OAuth Authorization Server**: Configure with a production Identity Orchestration server like Strata Maverics.
+
 2. **HTTPS**: Enable HTTPS for all endpoints
 3. **JWT Validation**: Implement proper JWT validation with JWKS
 4. **Token Storage**: Use encrypted storage for tokens
 5. **Monitoring**: Add logging and monitoring
 6. **Rate Limiting**: Implement rate limiting for API endpoints
 
-### Configuration for Production
+### Example Configuration for Production
 
 ```bash
 # Production OAuth Configuration
@@ -264,14 +267,14 @@ export MCP_SERVER_URL="https://your-mcp-server.com"
 
 ## Conclusion
 
-This implementation is **fully compliant** with the MCP Authorization Specification and demonstrates a production-ready OAuth 2.1 integration. All mandatory requirements have been implemented, and all recommended security best practices have been followed.
+This sample implementation is **fully compliant** with the MCP Authorization Specification and demonstrates what could be a production-ready OAuth 2.1 integration. All mandatory requirements have been implemented, and all recommended security best practices have been followed.
 
 **Compliance Score: 100%** ✅
 
-**Recommendation**: This implementation is ready for production deployment with appropriate OAuth server configuration and HTTPS enablement.
+**Recommendation**: This implementation may be ready for production deployment with appropriate OAuth server configuration and HTTPS enablement.
 
 ---
 
-**Report Generated**: December 2024  
+**Report Generated**: June 2025  
 **Specification Version**: 2025-06-18  
 **Implementation Version**: 1.0.0 
