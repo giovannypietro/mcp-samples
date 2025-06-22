@@ -2,7 +2,7 @@
 
 **Project**: Simple MCP Agent and Server with OAuth 2.1 Authorization  
 **Specification**: [MCP Authorization Specification v2025-06-18](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization)  
-**Assessment Date**: December 2024  
+**Assessment Date**: June 2025  
 **Compliance Status**: ✅ FULLY COMPLIANT
 
 ## Executive Summary
