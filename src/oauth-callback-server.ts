@@ -166,13 +166,36 @@ class OAuthCallbackServer {
 
   // Start the callback server
   start(): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // Check if server is already running
+      if (this.server && this.server.listening) {
+        if (this.debug) {
+          console.log('[OAuthCallbackServer] Server already running on port 3001');
+        }
+        resolve();
+        return;
+      }
+
       this.server = this.app.listen(3001, () => {
         console.log('OAuth callback server running on http://localhost:3001');
         if (this.debug) {
           console.log('[OAuthCallbackServer] Server started with debug mode');
         }
         resolve();
+      });
+
+      this.server.on('error', (error: any) => {
+        if (error.code === 'EADDRINUSE') {
+          if (this.debug) {
+            console.log('[OAuthCallbackServer] Port 3001 already in use, server may already be running');
+          }
+          resolve(); // Resolve anyway since the server is likely already running
+        } else {
+          if (this.debug) {
+            console.error('[OAuthCallbackServer] Server start error:', error);
+          }
+          reject(error);
+        }
       });
     });
   }
@@ -190,6 +213,21 @@ class OAuthCallbackServer {
     }
   }
 
+  // Check if server is running
+  isRunning(): boolean {
+    return !!(this.server && this.server.listening);
+  }
+
+  // Get server status
+  getStatus(): { running: boolean; port: number; sessions: number; debug: boolean } {
+    return {
+      running: this.isRunning(),
+      port: 3001,
+      sessions: this.authSessions.size,
+      debug: this.debug
+    };
+  }
+
   // Store authorization session
   storeSession(state: string, codeVerifier: string, oauthClient: OAuthClient): void {
     if (this.debug) {
@@ -198,6 +236,7 @@ class OAuthCallbackServer {
       console.log('  Code verifier present:', !!codeVerifier);
       console.log('  OAuth client present:', !!oauthClient);
       console.log('  Sessions before:', this.authSessions.size);
+      console.log('  Server running:', this.isRunning());
     }
     
     this.authSessions.set(state, { state, codeVerifier, oauthClient });
@@ -220,7 +259,7 @@ class OAuthCallbackServer {
 }
 
 // Export singleton instance
-export const oauthCallbackServer = new OAuthCallbackServer();
+export const oauthCallbackServer = new OAuthCallbackServer(3001, true);
 
 // Start server if run directly
 if (require.main === module) {

@@ -48,8 +48,11 @@ The client can:
 
 ### OAuth Callback Server
 - Handles OAuth authorization callbacks
-- Manages authorization sessions
+- Manages authorization sessions (in-memory, must be same process as client)
 - Provides user-friendly authorization completion
+
+> **Important:**
+> The callback server is started and managed by the client/agent process. **Do not run the callback server as a separate process** unless you implement persistent session storage. If you run it separately, you will get "Invalid Session" errors because the session is not shared between processes.
 
 ## Installation
 
@@ -94,13 +97,17 @@ npm run client
 The agent will:
 1. Attempt dynamic client registration with the OAuth server
 2. Start OAuth 2.1 authorization flow with PKCE
-3. Handle authorization callback
-4. Connect to the MCP server with valid access token
-5. Get server information
-6. List available tools and resources
-7. Demonstrate tool calls
-8. Read resources
-9. Display results
+3. Store authorization session with the callback server (in-memory, same process)
+4. Display the authorization URL for manual completion
+5. Wait for authorization to complete (up to 5 minutes)
+6. Connect to the MCP server with valid access token
+7. Get server information
+8. List available tools and resources
+9. Demonstrate tool calls
+10. Read resources
+11. Display results
+
+**Note**: The callback server is started automatically by the client. Do not start it separately unless you implement persistent session storage.
 
 ### Test HTTP Transport
 
@@ -166,7 +173,7 @@ When running with debug mode enabled, you'll see output like:
   authorizationServer: 'https://maverics7.stratademo.io',
   clientId: 'agentic_ai',
   redirectUri: 'http://localhost:3001/callback',
-  scope: 'mcp:read mcp:write',
+  scope: 'openid read write',
   hasClientSecret: false
 }
 
@@ -186,7 +193,7 @@ When running with debug mode enabled, you'll see output like:
   grant_types: ['authorization_code'],
   response_types: ['code'],
   token_endpoint_auth_method: 'client_secret_basic',
-  scope: 'mcp:read mcp:write'
+  scope: 'openid read write'
 }
 
 [OAuthClient] Generated PKCE:
@@ -201,7 +208,7 @@ When running with debug mode enabled, you'll see output like:
     response_type: code
     client_id: agentic_ai
     redirect_uri: http://localhost:3001/callback
-    scope: mcp:read mcp:write
+    scope: openid read write
     state: def456...
     code_challenge: xyz789...
     code_challenge_method: S256
@@ -232,8 +239,11 @@ The implementation is configured to use:
 - **Authorization Server**: `https://maverics7.stratademo.io`
 - **Client ID**: `agentic_ai`
 - **Redirect URI**: `http://localhost:3001/callback`
-- **Scope**: `mcp:read mcp:write`
+- **Scope**: `openid read write`
 - **Resource**: `http://localhost:3000`
+
+> **Note:**
+> This project now uses standard OAuth scopes including `openid` for OpenID Connect support, along with `read` and `write` for resource access. You can customize the scopes in `src/oauth-config.ts` by editing the `scope` property in `DEFAULT_OAUTH_CONFIG`. You may also add other standard scopes such as `profile`, `email`, or `offline_access` as needed for your use case.
 
 ### Environment Variables
 
@@ -263,16 +273,25 @@ The client initiates OAuth 2.1 authorization with:
 - Resource indicator (RFC 8707)
 - Required scopes
 
-### 3. User Authorization
-User is redirected to the authorization server to grant permissions.
+### 3. Session Storage
+The client stores the authorization session (state, code verifier, OAuth client) with the callback server for later retrieval. **This is in-memory and only works if the callback server is running in the same process as the client.**
 
-### 4. Authorization Callback
+### 4. User Authorization
+User is redirected to the authorization server to grant permissions using the provided authorization URL.
+
+### 5. Authorization Callback
 The authorization server redirects back to the callback server with an authorization code.
 
-### 5. Token Exchange
-The client exchanges the authorization code for access and refresh tokens.
+### 6. Session Retrieval
+The callback server retrieves the stored session using the state parameter. If the session is not found, ensure you are not running the callback server as a separate process.
 
-### 6. API Access
+### 7. Token Exchange
+The callback server exchanges the authorization code for access and refresh tokens using the stored OAuth client.
+
+### 8. Client Notification
+The client polls for authorization completion and proceeds with API access once tokens are available.
+
+### 9. API Access
 The client uses the access token to make authenticated requests to the MCP server.
 
 ## MCP Protocol Implementation
@@ -526,4 +545,18 @@ Comprehensive security assessment including:
 - [RFC 7591 - Dynamic Client Registration](https://datatracker.ietf.org/doc/html/rfc7591)
 - [RFC 9728 - Protected Resource Metadata](https://datatracker.ietf.org/doc/html/rfc9728)
 - [RFC 8414 - Authorization Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414)
-- [JSON-RPC 2.0 Specification](https://www.jsonrpc.org/specification) 
+- [JSON-RPC 2.0 Specification](https://www.jsonrpc.org/specification)
+
+### Test Scripts
+
+#### Callback Server Integration Test
+```bash
+npm run test:callback-integration
+```
+Runs `src/test-callback-integration.ts` to verify callback server session storage and retrieval.
+
+#### Full OAuth Flow Debug Test
+```bash
+npm run test:full-oauth-flow
+```
+Runs `src/test-full-oauth-flow.ts` to verify the full OAuth flow and session handling with debug output. 

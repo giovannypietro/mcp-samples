@@ -135,9 +135,13 @@ const tokenValidation = await this.tokenValidator.validateToken(token);
 
 **Key Features**:
 - Authorization callback endpoint (`/callback`)
-- Session management for authorization state
+- Session management for authorization state (in-memory, must be same process as client)
+- Debug mode enabled by default
 - Error handling and user-friendly responses
 - Automatic window closing after successful authorization
+
+> **Important:**
+> The callback server and client must share the same Node.js process for session storage to work. If you run the callback server as a separate process, you will get "Invalid Session" errors unless you implement persistent session storage.
 
 **Callback Handling**:
 ```typescript
@@ -432,6 +436,10 @@ export MCP_SERVER_URL="https://your-mcp-server.com"
    - Configure CORS headers properly
    - Verify allowed origins
    - Check preflight requests
+
+5. **Invalid Session Error**
+   - Cause: The callback server is running in a different process from the client, so the session is not shared (in-memory only).
+   - Solution: Always let the client/agent start and manage the callback server. Do not run the callback server separately unless you implement persistent session storage.
 
 ### Debug Mode
 

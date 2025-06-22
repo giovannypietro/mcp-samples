@@ -212,9 +212,11 @@ private generatePKCE(): { codeVerifier: string; codeChallenge: string } {
 
 **File**: `src/oauth-callback-server.ts`
 - ✅ Authorization callback handling
-- ✅ Session management
+- ✅ Session management (in-memory; not persistent)
 - ✅ Error handling
 - ✅ User-friendly responses
+
+> **Note:** Session management is in-memory only. For production deployments or if running the callback server as a separate process, implement persistent session storage (e.g., database, file, or cache).
 
 ## Testing Results
 

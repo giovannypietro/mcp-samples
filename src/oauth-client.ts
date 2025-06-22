@@ -58,7 +58,7 @@ export class OAuthClient {
 
   // Get authorization server metadata
   async getAuthorizationServerMetadata(): Promise<AuthorizationServerMetadata> {
-    const metadataUrl = `${this.config.authorizationServer}/.well-known/oauth-authorization-server`;
+    const metadataUrl = `${this.config.authorizationServer}/.well-known/openid-configuration`;
     
     if (this.debug) {
       console.log('[OAuthClient] Fetching authorization server metadata from:', metadataUrl);
@@ -216,7 +216,7 @@ export class OAuthClient {
 
     const metadata = await this.getAuthorizationServerMetadata();
     
-    const tokenRequest = {
+    const tokenRequest: Record<string, string> = {
       grant_type: OAUTH_CONSTANTS.GRANT_TYPE_AUTHORIZATION_CODE,
       client_id: this.config.clientId,
       code,
@@ -224,6 +224,11 @@ export class OAuthClient {
       code_verifier: codeVerifier,
       resource: MCP_SERVER_URI, // RFC 8707 Resource Indicators
     };
+
+    // Only include client_secret if it exists
+    if (this.config.clientSecret) {
+      tokenRequest.client_secret = this.config.clientSecret;
+    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -310,12 +315,17 @@ export class OAuthClient {
 
     const metadata = await this.getAuthorizationServerMetadata();
     
-    const tokenRequest = {
+    const tokenRequest: Record<string, string> = {
       grant_type: OAUTH_CONSTANTS.GRANT_TYPE_REFRESH_TOKEN,
       client_id: this.config.clientId,
       refresh_token: this.refreshToken,
       resource: MCP_SERVER_URI, // RFC 8707 Resource Indicators
     };
+
+    // Only include client_secret if it exists
+    if (this.config.clientSecret) {
+      tokenRequest.client_secret = this.config.clientSecret;
+    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -330,6 +340,7 @@ export class OAuthClient {
       console.log('[OAuthClient] Token refresh request:');
       console.log('  Token Endpoint:', metadata.token_endpoint);
       console.log('  Refresh Token (first 20 chars):', this.refreshToken.substring(0, 20) + '...');
+      console.log('  Request body:', tokenRequest);
     }
 
     const response = await fetch(metadata.token_endpoint, {

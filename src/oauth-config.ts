@@ -53,13 +53,23 @@ export const OAUTH_CONSTANTS = {
   PKCE_CHALLENGE_METHOD: 'S256',
 } as const;
 
+// Standard OAuth scopes
+export const OAUTH_SCOPES = {
+  OPENID: 'openid',
+  PROFILE: 'profile',
+  EMAIL: 'email',
+  READ: 'read',
+  WRITE: 'write',
+  OFFLINE_ACCESS: 'offline_access',
+} as const;
+
 // Default OAuth configuration (should be overridden in production)
 export const DEFAULT_OAUTH_CONFIG: OAuthConfig = {
   authorizationServer: 'https://maverics7.stratademo.io',
   clientId: 'agentic_ai',
   clientSecret: 'secret',
   redirectUri: 'http://localhost:3001/callback',
-  scope: 'mcp:read mcp:write',
+  scope: `${OAUTH_SCOPES.OPENID} ${OAUTH_SCOPES.READ} ${OAUTH_SCOPES.WRITE}`,
 };
 
 // MCP Server canonical URI (should match the resource parameter)

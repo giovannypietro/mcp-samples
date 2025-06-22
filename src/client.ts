@@ -7,6 +7,7 @@ import {
 } from './mcp-types';
 import { OAuthClient } from './oauth-client';
 import { DEFAULT_OAUTH_CONFIG, MCP_SERVER_URI } from './oauth-config';
+import { oauthCallbackServer } from './oauth-callback-server';
 
 class SimpleMCPClient {
   private ws: WebSocket | null = null;
@@ -69,36 +70,47 @@ class SimpleMCPClient {
       console.log('[SimpleMCPClient] Code verifier present:', !!codeVerifier);
     }
     
+    // Ensure callback server is started
+    try {
+      if (!oauthCallbackServer.isRunning()) {
+        if (this.debug) {
+          console.log('[SimpleMCPClient] Starting callback server...');
+        }
+        await oauthCallbackServer.start();
+        if (this.debug) {
+          console.log('[SimpleMCPClient] Callback server started successfully');
+        }
+      } else {
+        if (this.debug) {
+          console.log('[SimpleMCPClient] Callback server already running');
+        }
+      }
+    } catch (error) {
+      if (this.debug) {
+        console.log('[SimpleMCPClient] Callback server start error:', error);
+      }
+      throw new Error('Failed to start OAuth callback server. Please ensure port 3001 is available.');
+    }
+    
+    // Store the authorization session with the callback server
+    oauthCallbackServer.storeSession(state, codeVerifier, this.oauthClient);
+    
+    if (this.debug) {
+      const status = oauthCallbackServer.getStatus();
+      console.log('[SimpleMCPClient] Authorization session stored with callback server');
+      console.log('[SimpleMCPClient] Callback server status:', status);
+    }
+    
     console.log('\n=== OAuth Authorization Required ===');
     console.log('Please visit the following URL to authorize this application:');
     console.log(authUrl);
     console.log('\nAfter authorization, you will be redirected to a callback URL.');
-    console.log('Please provide the authorization code from the callback URL.');
+    console.log('The authorization code will be automatically handled by the callback server.');
+    console.log('\nWaiting for authorization to complete...');
     
-    // In a real application, you would:
-    // 1. Open the auth URL in a browser
-    // 2. Handle the callback automatically
-    // 3. Extract the authorization code from the callback
+    // Wait for authorization to complete by polling the OAuth client
+    await this.waitForAuthorization();
     
-    // For this demo, we'll simulate the authorization flow
-    console.log('\n=== Demo Mode: Simulating Authorization ===');
-    console.log('In a real application, the user would complete the OAuth flow.');
-    console.log('For this demo, we\'ll assume authorization was successful.');
-    
-    if (this.debug) {
-      console.log('[SimpleMCPClient] Demo mode: simulating authorization code');
-    }
-    
-    // Simulate getting an authorization code (in real app, this comes from callback)
-    const simulatedCode = 'demo_authorization_code_' + Date.now();
-    
-    if (this.debug) {
-      console.log('[SimpleMCPClient] Simulated authorization code:', simulatedCode);
-      console.log('[SimpleMCPClient] Exchanging code for tokens...');
-    }
-    
-    // Exchange code for tokens
-    await this.oauthClient.exchangeCodeForTokens(simulatedCode, codeVerifier, state, state);
     console.log('OAuth authorization completed successfully!');
     
     if (this.debug) {
@@ -108,6 +120,34 @@ class SimpleMCPClient {
         isAuthenticated: this.isAuthenticated()
       });
     }
+  }
+
+  // Wait for authorization to complete
+  private async waitForAuthorization(): Promise<void> {
+    const maxWaitTime = 5 * 60 * 1000; // 5 minutes
+    const pollInterval = 2000; // 2 seconds
+    const startTime = Date.now();
+    
+    if (this.debug) {
+      console.log('[SimpleMCPClient] Waiting for authorization to complete...');
+    }
+    
+    while (Date.now() - startTime < maxWaitTime) {
+      if (this.oauthClient.hasValidToken()) {
+        if (this.debug) {
+          console.log('[SimpleMCPClient] Authorization completed, token received');
+        }
+        return;
+      }
+      
+      if (this.debug) {
+        console.log('[SimpleMCPClient] Still waiting for authorization...');
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+    
+    throw new Error('Authorization timeout - please complete the OAuth flow within 5 minutes');
   }
 
   // Connect via WebSocket
@@ -405,10 +445,21 @@ class SimpleAgent {
         }
       }
     } catch (error) {
-      console.log('WebSocket connection failed, will use HTTP transport');
-      if (this.debug) {
-        console.log('[SimpleAgent] WebSocket connection failed:', error);
-        console.log('[SimpleAgent] Will fall back to HTTP transport');
+      // Check if this is an authorization timeout error
+      if (error instanceof Error && error.message.includes('Authorization timeout')) {
+        console.log('\n=== OAuth Authorization Timeout ===');
+        console.log('The authorization flow timed out. Please:');
+        console.log('1. Make sure the OAuth callback server is running: npm run oauth-callback');
+        console.log('2. Visit the authorization URL shown above');
+        console.log('3. Complete the authorization in your browser within 5 minutes');
+        console.log('4. Restart this client after authorization is complete');
+        throw error;
+      } else {
+        console.log('WebSocket connection failed, will use HTTP transport');
+        if (this.debug) {
+          console.log('[SimpleAgent] WebSocket connection failed:', error);
+          console.log('[SimpleAgent] Will fall back to HTTP transport');
+        }
       }
     }
   }
@@ -537,4 +588,6 @@ async function main() {
 // Run if this file is executed directly
 if (require.main === module) {
   main().catch(console.error);
-} 
+}
+
+export { SimpleAgent, SimpleMCPClient }; 

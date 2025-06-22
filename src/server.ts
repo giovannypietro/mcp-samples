@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 import { 
   MCPRequest, 
   MCPResponse, 
@@ -14,23 +14,18 @@ import {
   ReadResourceRequest,
   ReadResourceResult
 } from './mcp-types';
-import { 
-  ProtectedResourceMetadata, 
-  MCP_SERVER_URI,
-  OAUTH_CONSTANTS 
-} from './oauth-config';
+import { MCP_SERVER_URI, OAUTH_SCOPES, ProtectedResourceMetadata } from './oauth-config';
 
-// Simple MCP Server implementation following the official specification
+// Simple MCP Server implementation
 class SimpleMCPServer {
   private name: string;
   private version: string;
 
   constructor() {
-    this.name = 'simple-mcp-server';
+    this.name = 'Simple MCP Server';
     this.version = '1.0.0';
   }
 
-  // List available tools
   async listTools(): Promise<{ tools: Tool[] }> {
     return {
       tools: [
@@ -51,7 +46,7 @@ class SimpleMCPServer {
             properties: {
               expression: {
                 type: 'string',
-                description: 'Mathematical expression to evaluate (e.g., "2 + 2")',
+                description: 'Mathematical expression to evaluate',
               },
             },
             required: ['expression'],
@@ -75,7 +70,6 @@ class SimpleMCPServer {
     };
   }
 
-  // Call a tool
   async callTool(request: CallToolRequest): Promise<CallToolResult> {
     const { name, arguments: args } = request;
 
@@ -85,33 +79,25 @@ class SimpleMCPServer {
           content: [
             {
               type: 'text',
-              text: `Current time: ${new Date().toISOString()}`,
+              text: new Date().toISOString(),
             },
           ],
         };
 
       case 'calculate':
         try {
-          const expression = args.expression as string;
-          // Note: In production, you'd want to use a safer evaluation method
-          const result = eval(expression);
+          // Note: In production, use a safe expression evaluator
+          const result = eval(args.expression);
           return {
             content: [
               {
                 type: 'text',
-                text: `${expression} = ${result}`,
+                text: `${args.expression} = ${result}`,
               },
             ],
           };
-        } catch (error) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Error evaluating expression: ${error}`,
-              },
-            ],
-          };
+        } catch (error: any) {
+          throw new Error(`Calculation error: ${error.message}`);
         }
 
       case 'echo':
@@ -119,7 +105,7 @@ class SimpleMCPServer {
           content: [
             {
               type: 'text',
-              text: `Echo: ${args.message}`,
+              text: args.message,
             },
           ],
         };
@@ -129,27 +115,25 @@ class SimpleMCPServer {
     }
   }
 
-  // List available resources
   async listResources(): Promise<{ resources: Resource[] }> {
     return {
       resources: [
         {
           uri: 'simple://server-info',
           name: 'Server Information',
-          description: 'Basic information about this MCP server',
+          description: 'Basic server information',
           mimeType: 'text/plain',
         },
         {
           uri: 'simple://system-status',
           name: 'System Status',
-          description: 'Current system status and statistics',
+          description: 'System status and statistics',
           mimeType: 'application/json',
         },
       ],
     };
   }
 
-  // Read a resource
   async readResource(request: ReadResourceRequest): Promise<ReadResourceResult> {
     const { uri } = request;
 
@@ -158,12 +142,9 @@ class SimpleMCPServer {
         return {
           contents: [
             {
-              uri: 'simple://server-info',
+              uri,
               mimeType: 'text/plain',
-              text: `Simple MCP Server v1.0.0
-Started at: ${new Date().toISOString()}
-Available tools: get_current_time, calculate, echo
-Available resources: server-info, system-status`,
+              text: `Simple MCP Server v${this.version}\nRunning on ${new Date().toISOString()}`,
             },
           ],
         };
@@ -172,11 +153,11 @@ Available resources: server-info, system-status`,
         return {
           contents: [
             {
-              uri: 'simple://system-status',
+              uri,
               mimeType: 'application/json',
               text: JSON.stringify({
-                server: 'Simple MCP Server',
-                version: '1.0.0',
+                server: this.name,
+                version: this.version,
                 uptime: process.uptime(),
                 memory: process.memoryUsage(),
                 timestamp: new Date().toISOString(),
@@ -186,11 +167,10 @@ Available resources: server-info, system-status`,
         };
 
       default:
-        throw new Error(`Unknown resource: ${uri}`);
+        throw new Error(`Resource not found: ${uri}`);
     }
   }
 
-  // Get server info
   getServerInfo() {
     return {
       name: this.name,
@@ -205,7 +185,7 @@ Available resources: server-info, system-status`,
       authorization_servers: [
         process.env.OAUTH_AUTHORIZATION_SERVER || 'https://oauth.example.com'
       ],
-      scopes: ['mcp:read', 'mcp:write'],
+      scopes: [OAUTH_SCOPES.OPENID, OAUTH_SCOPES.READ, OAUTH_SCOPES.WRITE],
       token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
     };
   }
@@ -239,7 +219,7 @@ class TokenValidator {
       return {
         valid: true,
         audience: MCP_SERVER_URI,
-        scope: 'mcp:read mcp:write',
+        scope: `${OAUTH_SCOPES.OPENID} ${OAUTH_SCOPES.READ} ${OAUTH_SCOPES.WRITE}`,
       };
     } catch (error) {
       return { valid: false };
