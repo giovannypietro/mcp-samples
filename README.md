@@ -359,7 +359,10 @@ src/
 - No token passthrough
 
 ### Production Deployment
-- Use a real OAuth authorization server (e.g., Auth0, Okta, Keycloak)
+> [!IMPORTANT] >This is a sample implementation and it is NOT meant for production use. Please contact @giovannypietro or @apietro777 for production usage.
+
+- Use a production ready Identity Orchestrator (e.g. Strata Maverics)
+- Use a production ready OAuth authorization server (e.g., Auth0, Okta, Keycloak)
 - Implement proper JWT validation with JWKS
 - Use HTTPS for all endpoints
 - Implement proper session management
