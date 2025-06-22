@@ -80,14 +80,6 @@ The server will start on `http://localhost:3000` with:
 - Health check: `GET /health`
 - Protected Resource Metadata: `GET /.well-known/oauth-resource-metadata`
 
-### Start the OAuth Callback Server
-
-```bash
-npm run oauth-callback
-```
-
-The callback server will start on `http://localhost:3001` to handle OAuth authorization callbacks.
-
 ### Run the Client/Agent
 
 ```bash
@@ -95,19 +87,32 @@ npm run client
 ```
 
 The agent will:
-1. Attempt dynamic client registration with the OAuth server
-2. Start OAuth 2.1 authorization flow with PKCE
-3. Store authorization session with the callback server (in-memory, same process)
-4. Display the authorization URL for manual completion
-5. Wait for authorization to complete (up to 5 minutes)
-6. Connect to the MCP server with valid access token
-7. Get server information
-8. List available tools and resources
-9. Demonstrate tool calls
-10. Read resources
-11. Display results
+1. Start the OAuth callback server (in-memory, same process)
+2. Attempt dynamic client registration with the OAuth server
+3. Start OAuth 2.1 authorization flow with PKCE
+4. Store authorization session with the callback server
+5. Display the authorization URL for manual completion
+6. Wait for authorization to complete (up to 5 minutes)
+7. Connect to the MCP server with valid access token
+8. Get server information
+9. List available tools and resources
+10. Demonstrate tool calls
+11. Read resources
+12. Display results
 
-**Note**: The callback server is started automatically by the client. Do not start it separately unless you implement persistent session storage.
+**Important Notes:**
+- The callback server is started automatically by the client and runs in the same process
+- **Do not start the callback server separately** unless you implement persistent session storage
+- If you run the callback server as a separate process, you will get "Invalid Session" errors
+- The authorization flow requires manual completion in your browser
+
+### Run with Debug Output
+
+```bash
+npm run client:debug
+```
+
+Enables comprehensive debug output for the OAuth flow, callback server, and MCP client.
 
 ### Test HTTP Transport
 
@@ -453,19 +458,27 @@ src/
 ├── mcp-types.ts              # MCP protocol type definitions
 ├── oauth-config.ts           # OAuth configuration and types
 ├── oauth-client.ts           # OAuth 2.1 client implementation
-├── oauth-callback-server.ts  # OAuth callback server
+├── oauth-callback-server.ts  # OAuth callback server (managed by client)
 ├── server.ts                 # MCP server with OAuth resource server
 ├── client.ts                 # MCP client with OAuth authentication
 ├── test-http.ts              # HTTP transport test
+├── test-oauth-debug.ts       # OAuth debug test
+├── test-callback-integration.ts # Callback server integration test
+├── test-full-oauth-flow.ts   # Full OAuth flow test
 └── index.ts                  # Main entry point
 ```
+
+> **Note:** The callback server (`oauth-callback-server.ts`) is now managed by the client and runs in the same process for session sharing.
 
 ### Scripts
 - `npm run build` - Build TypeScript to JavaScript
 - `npm run server` - Start the MCP server
-- `npm run client` - Run the MCP client/agent
-- `npm run oauth-callback` - Start OAuth callback server
+- `npm run client` - Run the MCP client/agent (starts callback server automatically)
+- `npm run client:debug` - Run client with debug output
 - `npm run test` - Test HTTP transport
+- `npm run test:oauth-debug` - Test OAuth debug functionality
+- `npm run test:callback-integration` - Test callback server integration
+- `npm run test:full-oauth-flow` - Test full OAuth flow with debug
 - `npm run dev` - Run in development mode
 
 ## Transport Layer
@@ -559,4 +572,4 @@ Runs `src/test-callback-integration.ts` to verify callback server session storag
 ```bash
 npm run test:full-oauth-flow
 ```
-Runs `src/test-full-oauth-flow.ts` to verify the full OAuth flow and session handling with debug output. 
+Runs `src/test-full-oauth-flow.ts` to verify the full OAuth flow and session handling with debug output.

@@ -12,6 +12,8 @@
     "client:debug": "ts-node src/client.ts --debug",
     "test": "ts-node src/test-http.ts",
     "test:oauth-debug": "ts-node src/test-oauth-debug.ts",
+    "test:callback-integration": "ts-node src/test-callback-integration.ts",
+    "test:full-oauth-flow": "ts-node src/test-full-oauth-flow.ts",
     "oauth-callback": "ts-node src/oauth-callback-server.ts"
   },
   "dependencies": {
