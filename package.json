@@ -33,6 +33,6 @@
     "ts-node": "^10.9.0"
   },
   "keywords": ["mcp", "model-context-protocol", "ai", "agent", "oauth", "authorization"],
-  "author": "Your Name",
+  "author": "Aldo Pietropaolo",
   "license": "MIT"
 } 
