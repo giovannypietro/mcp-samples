@@ -67,7 +67,7 @@ export const OAUTH_SCOPES = {
 export const DEFAULT_OAUTH_CONFIG: OAuthConfig = {
   authorizationServer: 'https://maverics7.stratademo.io',
   clientId: 'agentic_ai',
-  clientSecret: 'secret',
+  clientSecret: '[.....]',
   redirectUri: 'http://localhost:3001/callback',
   scope: `${OAUTH_SCOPES.OPENID} ${OAUTH_SCOPES.READ} ${OAUTH_SCOPES.WRITE}`,
 };
