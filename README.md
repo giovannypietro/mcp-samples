@@ -175,19 +175,19 @@ When running with debug mode enabled, you'll see output like:
 
 ```
 [OAuthClient] Initialized with config: {
-  authorizationServer: 'https://maverics7.stratademo.io',
+  authorizationServer: 'https://oauthserver.example.com',
   clientId: 'agentic_ai',
   redirectUri: 'http://localhost:3001/callback',
   scope: 'openid read write',
   hasClientSecret: false
 }
 
-[OAuthClient] Fetching authorization server metadata from: https://maverics7.stratademo.io/.well-known/oauth-authorization-server
+[OAuthClient] Fetching authorization server metadata from: https://oauthserver.example.com/.well-known/oauth-authorization-server
 
 [OAuthClient] Authorization server metadata:
-  Authorization Endpoint: https://maverics7.stratademo.io/oauth/authorize
-  Token Endpoint: https://maverics7.stratademo.io/oauth/token
-  Registration Endpoint: https://maverics7.stratademo.io/oauth/register
+  Authorization Endpoint: https://oauthserver.example.com/oauth/authorize
+Token Endpoint: https://oauthserver.example.com/oauth/token
+Registration Endpoint: https://oauthserver.example.com/oauth/register
 
 [OAuthClient] Starting dynamic client registration...
 
@@ -208,7 +208,7 @@ When running with debug mode enabled, you'll see output like:
 [OAuthClient] Generated state parameter: def456...
 
 [OAuthClient] Authorization URL generated:
-  Base URL: https://maverics7.stratademo.io/oauth/authorize
+  Base URL: https://oauthserver.example.com/oauth/authorize
   Parameters:
     response_type: code
     client_id: agentic_ai
@@ -241,7 +241,7 @@ Debug output is disabled by default. To disable it when enabled:
 ### Current Configuration
 
 The implementation is configured to use:
-- **Authorization Server**: `https://maverics7.stratademo.io`
+- **Authorization Server**: `https://oauthserver.example.com`
 - **Client ID**: `agentic_ai`
 - **Redirect URI**: `http://localhost:3001/callback`
 - **Scope**: `openid read write`
@@ -256,7 +256,7 @@ Set these environment variables to configure OAuth:
 
 ```bash
 # OAuth Authorization Server URL
-export OAUTH_AUTHORIZATION_SERVER="https://maverics7.stratademo.io"
+export OAUTH_AUTHORIZATION_SERVER="https://oauthserver.example.com"
 
 # MCP Server URL
 export MCP_SERVER_URL="http://localhost:3000"

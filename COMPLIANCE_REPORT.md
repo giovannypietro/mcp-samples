@@ -36,7 +36,7 @@ This implementation is **fully compliant** with the MCP Authorization Specificat
 |------|----------------|--------|
 | **MCP Server (Resource Server)** | `src/server.ts` | ✅ **COMPLIANT** |
 | **MCP Client (OAuth Client)** | `src/client.ts` | ✅ **COMPLIANT** |
-| **Authorization Server** | External (maverics7.stratademo.io) | ✅ **COMPLIANT** |
+| **Authorization Server** | External (oauthserver.example.com) | ✅ **COMPLIANT** |
 
 #### 3.2 Authorization Server Discovery
 
@@ -50,7 +50,7 @@ This implementation is **fully compliant** with the MCP Authorization Specificat
 ```json
 {
   "resource": "http://localhost:3000",
-  "authorization_servers": ["https://maverics7.stratademo.io"],
+  "authorization_servers": ["https://oauthserver.example.com"],
   "scopes": ["mcp:read", "mcp:write"],
   "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post"]
 }

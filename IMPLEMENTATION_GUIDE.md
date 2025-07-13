@@ -49,7 +49,7 @@ This guide provides detailed technical information about the OAuth 2.1 implement
 **Configuration Example**:
 ```typescript
 export const DEFAULT_OAUTH_CONFIG: OAuthConfig = {
-  authorizationServer: 'https://maverics7.stratademo.io',
+  authorizationServer: 'https://oauthserver.example.com',
   clientId: 'agentic_ai',
   redirectUri: 'http://localhost:3001/callback',
   scope: 'mcp:read mcp:write',

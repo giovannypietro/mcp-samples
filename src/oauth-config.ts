@@ -65,7 +65,7 @@ export const OAUTH_SCOPES = {
 
 // Default OAuth configuration (should be overridden in production)
 export const DEFAULT_OAUTH_CONFIG: OAuthConfig = {
-  authorizationServer: 'https://maverics7.stratademo.io',
+  authorizationServer: 'https://authserver.example.com',
   clientId: 'agentic_ai',
   clientSecret: '[.....]',
   redirectUri: 'http://localhost:3001/callback',
